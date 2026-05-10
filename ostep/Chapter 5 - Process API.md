@@ -1,3 +1,44 @@
 - Create processes in UNIX: `fork()` and `exec()`
 	- `wait()`: wait for a process created to complete.
-- 
+- `fork()`:
+	- Creates a new process.
+	- PID: process identifier (used to name it if someone wants to do something w/ it).
+	- Child process:  exact copy of the calling process, doesn't start running at main.
+	- Parent receives PID of child, child receives return code of 0.
+	- With two processes, assuming single CPU, result is not deterministic.
+- `wait()`:
+	- Creates deterministic output (parent is blocked till the child is finished executing).
+		- Even if parent runs first, `wait()` gets called.
+		- Child runs and exit.
+		- Then parent runs again.
+- `exec()`:
+	- Run a program that's different than the calling program.
+	- Given an executable, loads code and static data from it and overwrites the current code segment.
+		- Heap and stack and other parts of memory space of program are reinitialized.
+		- Pass in arguments as the argv of that process.
+		- Transform the current running program into a different running program.
+	- Successful call to `exec()` never returns.
+- Why build interface like this?
+	- Separation of `fork()` and `exec()`: lets shell run code after `fork()` but before `exec()`.
+	- Shell:
+		- type in a command + arguments.
+		- Shell figures out where the executable resides.
+		- Fork to create new child process, exec to run the actual command, waits for completion.
+	- Redirection:
+		- Child created, before calling `exec()`, change output from screen to file.
+- `pipe()`:
+	- Output of one process is connected to in-kernel queue, input of another process is connected to same pipe.
+	- Output of one process can be used as input of another.
+- `kill()`:
+	- Send signals to a process.
+	- In shell, certain keystrokes configure specific signals (CTRL + C --> `SIGINT`).
+- Signals subsystem: 
+	- Provides infra to deliver external events to processes.
+	- process should use `signal()` system call to catch signals (when a particular signal is delivered, suspend normal execution, run other code).
+- User:
+	- Used to establish security.
+	- User logs in to gain access to system resources.
+		- User may launch one or many processes, exercise full control over them.
+	- Users can only control their own processes.
+		- OS parcels out resources.
+	- Superuser: can run very powerful commands.
