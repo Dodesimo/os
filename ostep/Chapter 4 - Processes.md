@@ -1,0 +1,44 @@
+- Process: a running program
+- Limited # of CPUs, need to get rid of scarcity.
+	- CPU virtualization: running process, stopping, running another.
+	- Creates illusion that many virtual CPUs exist but there's only one.
+	- Time slicing: potential cost is performance, each runs slowly if CPU is shared.
+- Mechanisms: low-level methods/protocols implementing functionality.
+	- Context switch: OS stops a program, starts running another. 
+- Policies: some type of decision in the OS.
+	- Scheduling policy for example.
+- Machine state: what a program can read or update when running.
+	- Memory: comprises a process (data that a running-process reads/writes)
+	- Registers: instructions (ld, st) read/update registers.
+	- Program counter (PC): tells us which instruction of program will execute next.
+	- Same with stack pointer and frame pointer: manage function params, local variables, return addresses.
+	- I/O information (what files accessed).
+- What should a process API have?
+	- Create: operating system must include method top create new processes.
+	- Destroy: OS needs to give an interface to destroy processes forcefully.
+	- Wait: wait for a process to stop running.
+	- Miscellaneous: suspend process/resume it.
+	- Status: what state a process is in.
+- How does OS get a program running?
+	- Load code/static data into memory (address space of process).
+		- Initially done eagerly (at once)
+		- Now lazily (only parts needed, demand paging).
+	- Allocate program's run-time stack.
+		- The stack has local variables, function parameters, return addresses.
+		- Populate the stack with arguments (argc, argv)
+	- Allocate memory for heap.
+		- Heap: dynamically-allocated data, get memory with `malloc()`.
+	- Initialize I/O.
+		- Each process has three open file descriptors for input, output, error.
+- Process states:
+	- Running: The process is running on a processor (executing instructions).
+	- Ready: Process is ready to run, but OS hasn't run it yet.
+	- Blocked: Process has done some kind of operation that makes it not ready to run until some other event takes place (when process does I/O request).
+		- Get blocked when reading from disk or waiting for packet over network.
+- Data structures:
+	- Keep track of state of each process: OS has a process list for all ready processes.
+	- Keep track of blocked processes.
+	- Register context: stopped process, contents of registers.
+	- Process stopped: registers saved to memory location, restoring, OS can resume running a process.
+- Zombie state: process has exited but not cleaned up.
+- 
