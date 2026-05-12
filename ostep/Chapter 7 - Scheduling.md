@@ -1,0 +1,43 @@
+- Turn around time: time at which job completes minus time at which job arrives.
+- FIFO:
+	- Straightforward.
+	- Can suffer from the convoy effect: # of short consumers queued behind a heavy weight.
+- Avoid convoy effect:
+	- Shortest job first.
+	- Optimal scheduling algorithm.
+	- However, if jobs arrive at different timings, convoy effect still holds.
+		- So should possibly preempt.
+		- For example, A arrives first w/ time needed to complete of 100.
+			- B and C arrives each taking ten units to complete.
+			- Neither can run unless A finishes.
+- Jobs don't necessarily need to run to completion.
+	- Long job A running.
+	- Prempt, and run something else.
+	- Wait later and run B.
+- Better alternative: shortest time to completion first, or preemptive shorted job first.
+	- New job enters system.
+	- Scheduler determines what has least time left.
+	- Schedules that one.
+- Response time: time when job arrives in a system to first time its scheduled.
+	- Preemptive algorithms: don't help if three jobs arrive, the quickest one is scheduled first and the others are waiting.
+- Solution:
+	- Round robin: run a job for a time slice
+	- Switch to the next job in the run queue.
+	- Keep doing this till all jobs are finished.
+		- Time slice length is important.
+		- Shorter: better the performance w/ respect to response time.
+		- But cost of context switching dominates overall performance.
+			- Lots of state in CPU caches, TLBs, branch predictions get flushed.
+			- Causes a drop in performance. 
+- Fair policies: perform poorly on metrics like turnaround time.
+	- Since jobs are stretched out.
+- Unfair: run shorter jobs to completion, prioritize turnaround time, but response time suffers.
+	- SJF + STCF: optimize for turnaround time.
+	- RR: optimze response time.
+- When IO happens:
+	- Process off doing I/O; schedule another job on the CPU
+	- When I/O completes: does the process get rerun immediately?
+	- Consider overlap:
+		- CPU being used by one process while waiting for IO of another to be complete.
+		- Break up each CPU burst as a job, and run in parallel w/ another process using I/O.
+	- 
