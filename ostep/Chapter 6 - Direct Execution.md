@@ -1,0 +1,128 @@
+- Time sharing: run one process for a little while, then run another, and so on so forth.
+	- Challenges:
+		- performance: how can we implement virtualization without adding a lot of overhead?
+		- control: how can we run processes efficiently while retaining control?
+		- Obtain high performance while maintaining control.
+- Limited direct execution:
+	- Direct execution: run program directly on the CPU.
+		- When OS wishes to start program, create a process entry in the process list.
+		- Allocate memory.
+		- Load program code.
+		- Locate entry point.
+		- Jump to it and start running.
+		- OS:
+			- Creates entry.
+			- Allocate memory
+			- Load program into memory.
+			- Set up stack w/ `argc` and `argv`.
+			- Clear registers.
+			- Execute call `main()`.
+		- Program 
+			- Runs main.
+			  Execute a return from main.
+		- Free memory of the process.
+		- Remove from the process list.
+		- Limitations:
+			- How do we know program doesn't do something bad?
+			- How does OS stop it from running and switching to another process and thus doing time sharing.
+	- System calls look like procedure calls but have trap instructions inside them.
+		- Calling convention of putting things on the stack.
+	- Process needs to do I/O and restricted operations without giving process complete control over the system.
+		- Have a new processor mode: user mode, restricted in what it can do.
+		- A process running in user mode can't issue I/O requests.
+		- In contrast to user mode: kernel mode.
+			- OS runs in.
+			- Code can do whatever (issue I/O requests, executing restricted instructions).
+		- User needs to do privileged operation.
+			- Hardware: allows program to do a system call.
+			- Kernel exposes certain functionality (access file system, create process, allocate more memory).
+		- System call execution:
+			- Program executes special trap instruction.
+			- Jump into kernel, raise privilege to kernel mode.
+			- Kernel does required work for calling process.
+			- Finished, OS returns-from-trap, goes into the calling user program and reduces the privilege to user mode.
+			- All user registers must be saved before executing a trap on kernel stack (because the handler is in kernel mode)
+		- How do we know where to jump?
+			- Kernel sets up a trap table at boot time.
+			- OS informs hardware what code to run for what interrupts.
+			- Informs the hardware of trap handlers.
+		- OS @ run:
+			- Creates entry for the process list.
+			- Allocates memory for program.
+			- Load program into memory.
+			- Setup user stack w/ `arg[v]`
+			- Fill kernel stack w/ reg/pc
+			- return from trap
+		- Hardware:
+			- Restores regs (for kernel stack)
+			- Move to user mode
+			- Jump to main
+		- Program:
+			- Run main()
+			- Calls a system call
+			- Trap into OS
+		- Hardware:
+			- Save registers to kernel stack (mostly the handler)
+			- Move to kernel mode
+			- Jump to the trap handler.
+		- OS:
+			- Handles the trap
+			- Returns from trap
+		- Hardware:
+			- Restore the register (could be done by the handler)
+			- Move to user mode
+			- Jump to the PC and trap
+		- Software:
+			- Return from main
+			- trap()
+		- OS:
+			- Free memory of process
+			- Remove from process list.
+		- System-call number: assigned to each system call.
+			- User code; places system call number in a register or at a specific location on stack.
+			- OS: when handling system call inside trap handler examines this, ensures validity and then executes corresponding code.
+				- Level of indirection is a form of protection.
+		- When a process does a system call:
+			- Must specify a system call number.
+			- Then specify a trap number (a generic system call handler).
+			- Within the handler, the system call number is validated and then a separate table is looked up and we jump to it.
+	- Switching between processes:
+		- OS needs to regain control of the CPU so that it can switch between processes.
+		-  Cooperative approach:
+			- OS trusts process of the system to behave reasonably.
+			- Transfer control of CPU to OS by making system calls.
+				- Through `yield` call.
+			- Applications also give up control to OS if they do something illegal.
+				- Trap for exceptions.
+		- Non-cooperative: OS takes control.
+			- What if process just doesn't give up the CPU.
+			- timer interrupt: program to raise interrupt every few milliseconds, when raised, current process is halted, pre-configured interrupt handler runs.
+			- OS registers handler with hardware by populating IVT. 
+			- Hardware must save state of program when interrupt occurred.
+		- Scheduler: determines whether to run current program or switch.
+		- If switch: we run context switch.
+			- Save register values from to its kernel stack.
+			- Restore register values for the next process from tis kernel stack.
+			- Assembly to save GPR, PC,, kernel stack pointer.
+			- Restore registers, PC, switch to the kernel stack for next process.
+		- Specifically:
+			- Process A is running.
+			- Hardware:
+				- Timer interrupt.
+				- Save registers of A in user-mode into kernel stack.
+				- Move to kernel mode.
+				- Jump to trap handler.
+			- OS:
+				- Handle trap.
+				- Call `switch()`
+					- Save the registers of A running in kernel mode in process block of A.
+					- Save the registers of B running in kernel mode in process block of B.
+					- Return from trap.
+			- Hardware:
+				- Restore registers of B in user-mode from the kernel stack.
+				- Move to user mode.
+				- Jump to B's PC.
+			- Process B runs.
+	- What happens when during interrupt or trap handling another interrupt occurs?
+		- Disable interrupts when one is handled.
+-
