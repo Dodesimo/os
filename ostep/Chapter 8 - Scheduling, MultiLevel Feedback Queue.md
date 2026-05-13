@@ -1,0 +1,61 @@
+- Multi-Level Feedback Queue: solves two problems
+	- optimize turn around time: run shorter jobs first (but OS doesn't know how long job runs for).
+	- Make system response for users, minimize response time
+	- Goal: min. response time and turnaround time w/o a priori info of job length.
+		- learn from history
+- MLFQ: has a # of distinct queues of different priority levels
+	- Given time, job ready to run is on a single queue.
+	- Job w/ higher priority (in higher queue) is chosen to run.
+	- If multiple jobs are on a given queue and have same priority, use round-robin scheduling among them.
+		- `Priority(A) > Priority(B)`, A runs.
+		- `Priority(A) == Priority(B)`, A and B run in round-robin.
+- MLFQ: varies priority of job based on observed behavior.
+	- Process yields CPU while waiting for keyboard input: MLFQ keeps priority high.
+	- Uses CPU intensively: reduces its priority.
+	- Learn about processes, use history of job to predict future behavior.
+- How does priority get changed?
+	- Workload: mix of interactive jobs (short-running and yield CPU frequently), longer CPU-bound jobs.
+	- Job allotment: time job spends at a priority level before reducing its priority.
+	- First approach:
+		- Job enters, placed at the highest priority.
+		- Job uses up allotment while running, priority moved down.
+		- Job gives up CPU before allotment, stays at the same priority levl.
+		- This approach assumes that all jobs are short (if it is, it will quickly run and complete).
+			- If not, it moves down the queues and becomes a lower priority batch-like process.
+			- Through this: MLFQ approximates SJF.
+		- I/O: interactive job does a lot of I/O, gives up CPU before allotment.
+		- Issue:
+			- Starvation: if a lot of higher priority processes arrive, lower priority processes don't get the opportunity to run.
+			- Security concerns: users could rewrite program to game the scheduler. 
+				- Doing sneaky stuff to trick scheduler into giving program more of CPU resources.
+			- Here:
+				- Run for nearly the entire allotment of the CPU, and then issue I/O, you remain in the same queue so you could monopolize the CPU.
+			- Program could change behavior over time, such a job 
+	- Second approach:
+		- Boost priority of jobs in system.
+			- After time-period of S, move all jobs in the system to the top-most queue.
+			- What this does:
+				- Processes are guaranteed to not starve (job shares CPU with other high-priority jobs in round-robin, eventually get service).
+			- If long running process in lowest priority level and two high-priority processes arrive, those get round-robined and the long-running process is starved (without priority boost).
+			- With priority boost, the long running process gets a change to be scheduled alongside the higher-priority processes.
+			- Finding S: need ML or sys admin.
+		- How to avoid gaming?
+			- Keep track of allotment left, if all used-up, demote to the next priority queue.
+			- So:
+				- Once job uses up time allotment at a given level, priority is reduced.
+				- We do not reset allotment whenever a process yields.
+	- How to parameterize a scheduler?
+		- How to pick how many queues, allotment (how long a process can be in each queue), how often priority boosts should happen?
+			- Tuned parameters
+			- Time slice: how long process runs on the CPU
+			- Allotment: total accumulated CPU time task can consume at a particular priority level.
+		- Different time slice variant per queue: meaning processes at different priority levels have different time slices.
+			- High level queues: short time slice (makes sense, because interactive jobs are in top level queues).
+		- Some OS allow for user to provide feedback/advice: hints.
+	- Ultimate rules of MLFQ:
+		- Rule 1: If priority(A) > priority(B), A runs and B doesn't.
+		- Rule 2: if priority(A) == priority(B), both run in round-robin fashion w/ the time slice of the given queue.
+		- Rule 3: job enters system, placed at highest priority
+		- Rule 4: job uses up time allotment at a level, moves down one queue (priority is reduced).
+		- Rule 5: after some time period, move all the jobs to the top most queue.
+		- 
