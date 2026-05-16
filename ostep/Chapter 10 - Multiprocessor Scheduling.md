@@ -1,0 +1,58 @@
+- Difficulties with multiple CPUs:
+	- Typical application uses single CPU
+	- Adding more doesn't make that application faster.
+- Run application in parallel using threads.
+- Can principles of single-processor scheduling be done with multiple CPUs?
+- Main difference between single CPU hardware and multiple-CPU hardware.
+	- Use of hardware caches.
+- Already know the cache fundamentals but:
+	- Cache based on locality (two kinds): temporal/spatial.
+	- Temporal: data accessed, likely access again in near future
+	- Spatial: if program accesses a data item at particular address, likely to access data near that address as well.
+- W/ multiple CPUs: 
+	- Issue when we modify value in that address.
+	- Writing all the way to main memory is slow (so system does it later).
+	- If another CPU reads and the data isn't in its cache, then we have cache coherency issues.
+- Solution:
+	- Snooping bus where hardware ensures correct value is present throughout caches.
+		- Need to preserve the view of a single shared memory.
+		- So values either get invalidated or they get updated.
+	- Write-back caches make this more complex because up-to-date values aren't present immediately in memory.
+- Accessing shared data items or structures across CPUs: use mutual exclusion primitives such as locks.
+	- If you wanted to dequeue from a linked list, can't have two dequeues run concurrently.
+		- Run into challenges like double freeing of the head element or returning same data value twice.
+- Locked data structures: # of CPUs grows, access to synchronized shared data structures becomes slow.
+- Cache affinity:
+	- Process on a CPU builds up state in caches.
+	- Next time we run a process, have it go to the same CPU since some of its state will be cached.
+- Simplest approach: single-queue multiprocessor scheduling (SQMS):
+	- Advantage: simplicity, not much extra work to take existing policy picking best job to run and adapt it to work on multiple CPUs.
+	- Disadvantages:
+		- Lack of scalability: there is some sort of locking in the code.
+		- Locks reduce performance as the # of CPUs increase because system spends more time in lock overhead and less time doing actual work.
+		- There is no concept of cache coherency (CPU simply picks next job to run from a global queue).
+	- Solutions:
+		- SQMS have an affinity mechanism to make it more likely process continues to run on same CPU if possible.
+		- One provides affinity for some jobs, others moved around to balance load.
+- Multi-queue multiprocessor scheduling:
+	- Each CPU has a queue.
+	- Each queue has a particular scheduling algo.
+	- Job enters: placed on one queue based on a heuristic (random, one with fewer jobs than others).
+		- Within each queue, can schedule stuff however we like.
+	- Advantage over SQMS: scalable, # of CPUs grow, so does the number of queues. 
+	- Cache and lock contentions doesn't become a problem.
+	- MQMS: provides cache affinity, jobs stay on the same CPU.
+	- However, leads to load imbalance.
+- How to deal with load imbalance?
+	- Migration: move. jobs around from one CPU to another.
+	- In cases where a single migration doesn't solve the problem, continuously migrate one or more jobs.
+- Work stealing: source queue low on jobs peeks at target queue, if more full than source, then take one or more jobs.
+	- Tradeoff: look around too often, high overhead and trouble scaling.
+	- Don't look at other queues often: suffer from imbalances.
+- Linux Multiprocessor Schedulers:
+	- O(1), CFS, BF Scheduler
+	- O(1) and CFS: multiple queues.
+	- BFS: single queue.
+	- O(1) -> priority based.
+	- CFS: deterministic proportional-share approach (stride scheduling).
+	- BF: proportional-share, uses a scheme called Earliest Eligible Virtual Deadline first.
