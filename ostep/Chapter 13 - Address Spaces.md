@@ -1,0 +1,38 @@
+- Memory layout in early systems:
+	- OS: set of routines in memory (start at physical address 0).
+	- One running programming in physical memory, used the rest of memory.
+- Multiprogramming: multiple processes were ready to run at a given time, OS switches between them.
+	- Increased effective utilization of CPU and boosted efficiency.
+- TIme sharing: many users concurrently using a machine, so share processes among them by giving each task or user small slice of processing time.
+	- Implement one process for a short while, give it full access to all memory then stop it.
+	- Save all state to a disk.
+	- Load some other process' state
+	- Run it for a while
+	- Problem:
+		- too slow as memory grows (saving entire contents of memory to disk is non-performant).
+		- leave processes in memory while switching b/w them.
+	- For multiple programs to be concurrently in memory: need protection, don't want a process to be able to read or write to some other process' memory.
+- Need an abstraction of physical memory:
+	- Address space: view of a running program's memory in the system.
+	- Address space of a program: all memory state of the program.
+		- Contains:
+			- Actual code.
+			- Stack: function call chain, allocate local variables, pass parameters, return values to/from routines.
+			- Heap: dynamically allocated user-managed memory
+			- Code at the top
+			- Heap below, grows positively towards higher address spaces (downward)
+			- Stack at the bottom, grows negatively towards lower address spaces (upward).
+	- This is an abstraction (the program isn't in memory at physical addresses 0 through 16KB, instead in some arbitrary physical addresses).
+- How does OS build an abstraction of potentially, large address space for multiple running processes (all sharing memory) on top of single physical-memory.
+	- OS is virtualizing memory: running program thinks its loaded into memory and has large address space, but reality is different.
+	- Program does a load at address 0 (virtual address), OS and hardware ensures the load doesn't go to physical address 0 but rather to physical address 320KB (where its actually present in memory).
+- Goals of OS:
+	- Virtualize memory.
+	- Transparency: implement VM so its invisible to running program (program shouldn't know memory is virtualized, but program behaves as if it has own private physical memory).
+	- Efficiency: virtualization should be time efficient (don't run too long) and should be space efficient (not too much memory for structures supporting virtualization).
+		- TLB and such.
+	- Protection: protect processes from one and another and the OS from the processes.
+		- Prevents one fail from impacting the other.
+		- If a process does a load, store or an instruction fetch, don't impact others + OS.
+		- Isolation among processes: each process runs in its own isolated mem space.
+		- 
