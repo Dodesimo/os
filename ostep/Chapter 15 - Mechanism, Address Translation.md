@@ -1,0 +1,72 @@
+- Limited direct execution:
+	- Let the program run directly on hardware.
+	- Certain key points (timer interrupts, system calls/): OS gets involved.
+- How do we efficiently virtualize memory?
+	- And maintain control over which memory locations application can access.
+	- Ensure application memory accesses are properly restricted.
+- Do this with hardware-based address translation: 
+	- Hardware transforms each memory access changing virtual address to physical address.
+	- Hardware alone can't virtual memory, just provides low level mechanism for doing it efficiently.
+	- Must manage memory (track free locations and in-use locations).
+- First, assume user's address space must be placed contiguously in physical memory.
+	- Also, size of address space isn't too big (less than size of physical memory).
+	- Also assume each address space is the exact same size.
+- Code section is at the top (code section):
+	- Stack is at the very bottom, grows upwards (towards lower address space).
+	- Heap is below, grows downwards (towards higher address space).
+- Program's perspective:
+	- Address space starts at address 0.
+	- Grows to a maximum of 16KB (all memory references generated must be in these bounds).
+	- To virtualize memory, OS needs to place the process elsewhere in physical memory not just address 0.
+- Idea: base and bounds.
+	- Base register and bounds/limit register.
+	- Place address space anywhere and do so while ensuring process can only access own address space.
+	- Each program starts running, OS decides where in physical memory its loaded, sets base reg. to that value.
+		- For every memory reference now generated, translated by the processor:
+			- `physical address = virtual address + base`.
+		- So processes generate virtual address, hardware adds base reg. to these addresses: result is a physical address.
+		- Instruction # 128: PC is set to 128, hardware adds value of base register of 32,000 bytes to this to get a physical address.
+	- Minimal hardware: base is the lower limit within the physical address space, bounds/limit the upper bound of addresses within the physical address space (security).
+	- Why is this called dynamic relocation:
+		- Relocation of address happens at runtime, can move address spaces even after process is running.
+	- Opposite: linker fixes addresses for each line when process is loaded into memory (static relocation).
+		- Results in possibility of generating non-sense addresses.
+		-  Also, limits where in memory we can keep a process.
+	- Bounds: ensure that all generated addresses of the process are legal.
+	- Base and bounds registers are hardware components (structures kept on CPU).
+		- Part of the processor: MMU.
+	- Bounds register can be defined in two ways:
+		- Size of address space, checks the virtual address against it.
+		- Physical address of the end of the address space: hardware adds base and then ensures in bounds.
+- Hardware support for this:
+	- Two CPU modes:
+		- Kernel/privileged mode for all privileged actions.
+		- User mode: limited in what they can do.
+		- Single bit stored in processor status word indicates CPU mode.
+	- Provide special instructions to modify base and bounds registers:
+		- Privileged (only in kernel mode can they be modified).
+	- CPU must be able to generate exceptions where memory accessed illegally.
+		- Stop executing user program and have OS OOB handler run. 
+		- Same if user tries to change values of base + bounds registers.
+		- CPU must also provide method to inform it the location of these handlers.
+	- Circuitry does the actual addition and translation and check if within bounds.
+- What does OS need to do?
+	- When process created, need to find space in memory.
+		- Easy if address space is smaller than size of physical memory and each the same size.
+		- Physical memory is array slots, OS tracks which one is free or in use, go through a free list to find room for this new address space.
+	- Must do work when process is terminated by reclaiming memory, putting memory on the free list and clean up associated data structures.
+	- OS must also save and restore base-and-bounds pair when switching between processes.
+		- Save the values in a process control block.
+		- when OS resumes running process, set values of the base and bounds to correct values.
+	- When process stops, OS can move an address space from one location in memory to another.
+		- Deschedule the process.
+		- OS copies address space from current location to new location.
+		- OS updates saved base register to new location.
+	- Provide exception handlers to handle situations where out of bounds memory accesses are made (typically process termination).
+	- When a timer interrupt happens:
+		- Remember kernel registers are saved within the kernel mode.
+			- Also save the base/bounds within each process structure/process control block.
+		- Hardware saves all user registers onto the kernel stack.
+		- Hardware is responsible for translating virtual address to physical, doing load/store, and restoring registers, moving to user mode, and jumping to a PC.
+-  Internal fragmentation: wasted space inside allocated unit.
+-  External fragmentation: wasted space between allocated units.
