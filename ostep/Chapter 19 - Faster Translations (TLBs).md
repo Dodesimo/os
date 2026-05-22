@@ -1,0 +1,73 @@
+- How do we speed up address translation and avoid extra memory reference paging causes.
+- Use a translation-lookaside buffer (TLB), part of chip's memory management unit.
+	- Each memory reference: check the TLB to see if the virtual page has been already, and if so, return the physical page.
+- Algorithm:
+	- Extract virtual page number, check if TLB has a translation (if so, TLB hit).
+	- Get the PFN from the right TLB entry, and then concatenate offset onto the original Virtual Address, form physical address and access memory.
+	- If TLB miss:
+		- Do the actual access.
+		- Update the TLB with this translation.
+	- Little overhead is added: TLB is found near processing core and designed to be fast.
+	- Miss occurs: high cost of paging is incurred + page table accessed to find translation and extra memory reference results.
+		- So we want to avoid TLB misses as much as possible.
+- Looking up the first element of an array: results in a TLB miss
+	- Second element: due to spatial locality (put next to the first), translation loaded into TLB.
+	- Due to spatial locality: only first access to element yields a TLB miss
+- Larger page sizes: result in fewer misses.
+- If we accessed array again, due to temporal locality, high TLB hit rate.
+- Who handles a TLB miss?
+	- Could be hardware or software.
+	- Hardware managed TLB:
+		- CISC instruction set
+		- Hardware needs to know where page tables are in memory (page-table base register)
+		- On a miss: hardware walks the page table, finds the right page-table entry, extract translation, update TLB, and retry translation
+	- Software managed TLB:
+		- TLB miss: hardware raises exception
+		- Causes jump to trap handler
+			- Code within OS written with purpose of handling TLB misses.
+			- Look up translation in page table, use special instructions to update TLB, return from trap
+			- This return is different than first return.
+			- You want to return at instruction that caused the trap.
+				- Causes a TLB hit (results in hardware saving a different PC to resume back to).
+			- When doing TLB miss handling, don't want an infinite chain of TLB misses to happen.
+				- Keep the miss handlers in physical memory (not mapped and not subjected to address translation)
+				- Have permanent translations that always hit in TLB
+			- Difference between TLB Valid Bit and Page Table Valid Bit
+				- TLB Valid Bit: if there's a valid translation stored in the TLB (set to all invalid initially)
+				- Page Table Entry Valid Bit: if a page has been allocated by the process
+	- Benefits of software:
+		- Abstraction: software can write page table in any format
+		- Simplicity: hardware just raises exception, and OS TLB miss handler takes over.
+- TLB internals:
+	- Fully associative cache (entries can be anywhere, gets searched in parallel). 
+		- So each entry contains the VPN (need to search everything in parallel).
+	- Also has other bits (such as valid bit, protection bit, address-space ID, dirty bit).
+- TLB translations only valid for the current process, not others.
+	- If two virtual page numbers for a process have different PFNs, this causes ambiguity in the TLB.
+	- How do we deal with TLB in context switches?
+		- Flush: empty contents before running next process.
+		- Software: done w/ explicit hardware instruction
+		- Hardware: enabled when page-table base register is changed.
+		- Just set the valid bits to 0 (clear contents).
+	- This can cause performance issues (for new process, TLB misses as data and code pages are touched).
+		- Reduce this: share TLB across context switches through address space IDs.
+		- This allows for processes to share identical translations (use ASID to compare and get the right translation).
+	- Sharing pages: two VPNs point to the same physical page.
+		- Useful: reduces # of physical pages in use, reducing memory overheads.
+- How to replace items in the TLB?
+	- Need to minimize miss rate
+	- Evict LRU entry or get rid of random page.
+- MIPS TLB:
+	- Wired register: tells hardware how many slots of TLB should be OS
+	- Page mask: supports multiple page fields.
+	- Instructions to update the TLB:
+		- TLBP: check for a translation
+		- TLBR: reads content of TLB into registers
+		- TLBWI: places a specific TLB entry
+		- TLBWR: randomly replaces a TLB entry
+- Other issues w/ TLB:
+	- number of page accesses exceeds number of pages into TLB: we exceed the TLB coverage
+		- have larger page sizes
+	- TLB becomes a bottle neck in physically-indexed caches: need physical address to access cache
+	- virtual-indexed caches: solves some problems but introduces new issues.
+- 
