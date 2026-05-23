@@ -1,0 +1,55 @@
+- OS needs to stash away portions of address spaces not currently used
+- how can OS use larger slower device to provide illusion of large virtual address space
+- why support large address space for process
+	- convenience + ease of use
+	- large address space, don't worry about if enough space for data structures (just write stuff naturally)
+	- memory gets allocated as needed
+- swap space: allows OS to support illusion of large virtual memory 
+- reserve space on the disk for moving pages: called swap space
+	- can read/write to the swap space in page-sized units
+	- OS needs to remember disk address of given page
+- size of swap space: determines max # of pages can be in use at a time
+	- essentially, not all parts/pages of a program are in physical memory
+- code pages: can be swapped out
+- memory reference:
+	- virtual memory references, hardware translates them into physical address
+	- extract VPN from address, check TLB for a hit, produces physical address if so
+	- VPN not in TLB (TLB miss):
+		- hardware locates page table in memory (page table base register)
+		- looks up page table entry w/ the VPN as an index
+	- page is valid and in memory: hardware extracts PFN from PTE, adds it to TLB, retries instruction
+- how do we know if a page is not present in physical memory?
+		- look at a new piece of information called the present bit
+		- if its set, page is in physical memory
+		- if not, page is on disk somewhere
+- accessing page not in physical memory: page fault
+- TLB misses: two types of systems
+	- hardware-managed TLB: hardware looks in the page table
+	- software-managed TLB: OS looks at the page table
+- all systems handle page faults in software
+	- hardware managed TLB: just raise an exception, OS handler takes over
+		- why: page faults are slow due to disk operation, hardware would need to know how to swaps, I/Os, etc
+	- OS gets a page fault, looks in PTE to get the address, requests disk to fetch page
+	- once I/O completes, OS updates page as present, update PFN field to record in-memory location, then retries the instruction
+	- this retry could cause TLB miss, but TLB could just be updated
+	- while I/O happens, process is blocked doing I/O, other ready processes get ran
+- what if memory is full:
+		- need to page out one or more pages to make room for new pages OS brings in (page-replacement policy)
+- hardware process:
+	- if a page is present and valid:
+		- TLB miss handler grabs PFN from the PTE, retries the instruction
+	- if valid but not present:
+		- page fault handler runs to get the frame in memory (raise an exception)
+	- if not valid or present:
+		- page fault handler most likely just traps the program (raise an exception)
+- software process:
+		- find a physical frame from free list or use replacement
+		- handler issues I/O request to read in the page from swap space
+		- OS then updates page table and retries instruction
+		- retry results in TLB miss, results in a retry (TLB hit)
+-  how are free pages maintained?
+	- OS has high watermark and low watermark
+	- OS notices fewer than LW pages available, swap daemon evicts pages till there are HW pages available
+	- may cluster/group # of pages and write them out to the swap partition
+			- increases disk efficiency
+	- if there aren't any free pages available, background paging thread is informed, thread frees up some pages, then the original thread is reawakened.
