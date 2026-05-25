@@ -53,3 +53,6 @@
 	- may cluster/group # of pages and write them out to the swap partition
 			- increases disk efficiency
 	- if there aren't any free pages available, background paging thread is informed, thread frees up some pages, then the original thread is reawakened.
+- why can't we just assign swap space disk entry to page table entry:
+	- swap space is in hard disk, CPU can't directly access it
+	- so it must use I/O calls to copy it over to a physical frame that it got through a free list or eviction policy
