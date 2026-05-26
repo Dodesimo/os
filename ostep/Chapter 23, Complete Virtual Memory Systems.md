@@ -1,0 +1,110 @@
+- what features realize a complete virtual memory system
+- segmentation: helps ease page table size
+- VAX: 
+	- page tables placed in kernel virtual memory, allocating/growing page table required allocation out of its own virtual memory
+- if page table is in kernel memory, address translation is more complex
+	- required to look up page table entry for system page table, then page of page page table, then address of desired memory access
+	- hardware-managed TLBs circumvent this
+- kernel virtual address space is part of each user address space
+	- process context switch: P0 and p1 registers point to appropriate page tables of soon-to-run process, but doesn't change S base + bounds register
+- null pointer dereference: generate a virtual address of 0, TLB miss, then look up page table and entry is invalid.
+	- So this results in a page fault, and a system call + which terminates process
+- because OS is part of address space, specify protection bits in the page table
+	- specify what level CPU needs to be in order to access particular page
+	- system data and code: set to higher level of protection than user data and code
+	- attempt to access, generates trap into OS
+- each page table entry has a valid bit, protection field, field reserved for OS use, and PFN
+	- no reference bit: VMS replacement algorithm doesn't need hardware support to determine what page are active
+	- use protection its to emulate reference bits
+	- set all pages inaccessible, but keep around info about what pages really accessible
+	- when process accesses page, traps OS, OS checks if should be accessible, then revert page
+	- at time of replacement, OS checks what page has been recently marked inaccessible and get idea of what pages haven't been used
+- segmented FIFO: each process has a maximum # of pages kept in memory (resident set size) kept in a FIFO list.
+	- first page of each segment is evicted
+	- FIFO not the best
+- two second chance lists global clean page free list and dirty page list
+	- process exceeds RSS, page removed from per process FIFO
+	- if clean, end of free list
+	- if not, end of dirty page list
+- if another process needs free page, takes first free page of off global clean ist
+	- if original process faults before claimed, reclaims the page
+	- larger the second chance lists, closer FIFO algorithm performs to LRU
+- multiple pages are written together from the global dirty list, writes them in one motion
+- demand zeroing: when process requires a page, give it in the page table but mark it unaccessible
+	- if actually requested, then find physical page, zero it, and map it to process' address space
+- copy on write:
+	- don't copy a page from one address space to another, just map it into target address space and mark it read only in both
+	- if an address space tries to write to a page, traps to OS, allocates new page fills it with data, and maps new page into address space of faulting process
+	- helpful with `fork()`: new process just shares pages with old
+		- supports a quicker subsequent call to `exec()`
+- linux:
+	- address space has a user portion and a kernel portion
+	- context switch: user portion is the same across processes
+	- programming running in user mode can't access kernel virtual pages (only done through trapping into kernel and transitioning to privileged mode)
+	- kernel logical addresses: normal virtual address space (call kmalloc)
+		- most kernel data structures live here (page table, per process kernel stacks, so forth)
+		- can't be swapped to disk
+		- can be logically mapped to the first portion of physical memory
+			- addresses can be treated as physical
+		- memory contiguous in kernel logical address, also contiguous in physical memory
+			- allows for operations like DMA to work
+	- kernel virtual address: `vmalloc`, returns a pointer to a virtually contiguous region of size
+		- isn't contiguous to physical pages
+		- each kernel virtual page maps to non-contiguous physical pages (not suitable for DMA)
+		- however, easier to allocate and used for large buffers
+	- x86: hardware managed, multi level page table structure
+		- one page table per process
+		- OS sets up mappings in memory, hardware handles rest
+		- pointers privileged register at the start of a page directory
+	- 64 bits: top bits are unused
+		- as system memories grow, these bits will also be used
+		- four levels of translation
+	- support huge pages
+		- larger pages: fewer the mapping needed in the page table
+		- larger pages: better TLB behavior and performance gains
+	- process actively uses large amount of memory:
+		- fills up TLB w/ translations
+		- if translations for 4KB pages, small amount of total memory accessed without TLB misses
+		- huge pages: process can access a large amount of memory without TLB misses and uses fewer slots in the TLB (can also be serviced and allocated fast)
+	- this was done incrementally: applications can explicitly request large page memory allocations through `mmap()` or `shmget()` calls
+	- but soon this was better, so OS automatically looks for opportunities
+	- biggest cost: internal fragmentation
+		- page is large but sparsely used
+		- I/O is longer due to larger page sizes
+	- cache: done aggressively:
+		- page cache keeps pages in memory from memory-mapped files, file data and metadata from devices `read()` and `write()`, and heap/stack pages that make up each processes (anonymous regions b/c underneath is swap space)
+		- kept in a page cache hash table
+		- dirty data is periodically written to the backing store (specific file, swap space by background threads)
+			- done after certain time period 
+		- cache eviction: 2Q replacement
+			- standard LRU is effective but can be subverted by certain patterns
+			- process repeatedly accesses large file, LRU kicks out every other file
+			- retaining parts of file not useful
+			- two queues:
+				- inactive list and active list
+				- when accessed for first time, placed on inactive list
+				- rereferenced, put in the active list
+			- when replacement happens,
+				- candidate taken from inactive list
+				- move pages to the bottom of the active list to the inactive list (keep active list two thirds of total cache size)
+				-  each list isn't in perfect LRU, but approximation like clock replacement is used
+	- memory mapping: 
+		- calling `mmap()` on opened file descriptor, process gets pointer to beginning of VM where contents of file are found
+		- accesses to parts of memory file not yet in memory trigger page faults (copy in appropriate part to a page and update page table)
+			- demand paging
+	- buffer overflow: common type of attack, copy over buffer size and overwrite memory of the target
+		- inject own code and do privilege escalation and let user code gain kernel access rights
+		- solution:
+			- prevent execution of any code found within region of address space (such as stack)
+	- return oriented programming: lots of bits of code, especially C programs linking within the C library
+		- overwrite stack such that return address points to some malicious instruction
+		- so you chain returns to jump to different lines of code to run arbitrary code.
+		- combat this w/ address space layout randomization (ASLR)
+			- OS randomizes code, stack, heap placement within virtual address space
+			- makes it harder to string the series of returns
+	- branch prediction and speculative execution can leave traces of execution that reveal memory contents
+	- kernel protection: remove kernel address space from user process and have a separate kernel page table 
+		- keep minimum in the processes
+		- however, this causes performance due to switching page tables
+- swap space for anonymous process write backs
+- files have original locations on disk we write back to
