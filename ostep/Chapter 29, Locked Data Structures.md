@@ -3,7 +3,7 @@
 	- follows basic design pattern
 	- adds single lock, acquired when calling routine, released when returning from the call
 	- similar to monitor: locks acquired and released automatically as call/return from object methods
-	- ```c++
+	- ```c
 	  typedef struct __counter_t {
 		  int value;
 		  pthread_mutex_t lock;
@@ -40,7 +40,7 @@
 * concurrent linked list:
 	* for performance purposes, the lock should be only in the critical section (code where a shared variable is getting accessed)
 	* for example:
-		* ```c++
+		* ```c
 		  int List_insert(list_t *L, int key) {
 			  node_t *new = malloc(sizeof(node_t));
 			  if (new == NULL) { return -1; } //we failed
@@ -61,7 +61,7 @@
 	* two locks: one for the head one for the tail
 		* tail is for dequeueing
 		* head is for enqueueing
-	* ```c++
+	* ```c
 	  void Queue_Enqueue(queue_t *q, int value) {
 		  node_t *tmp = malloc(sizeof(node_t));
 		  assert(tmp != NULL);
@@ -80,7 +80,7 @@
 	* has high performance because the entire hash table isn't required to be locked, only lists associated with particular keys
 		* so multiple key lists can be processed
 		* essentially a lock per hash bucket
-	* ```c++
+	* ```c
 	  int Hash_Insert(hash_t *H, int key) {
 		  return List_Insert(&H->lists[key % BUCKETS)], key);
 	  }
